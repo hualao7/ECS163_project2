@@ -1,0 +1,767 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style> /* set the CSS */
+
+
+   label{
+        font-size:13px;
+   }
+
+	text {
+	  font: 10px sans-serif;
+	  text-anchor: middle;
+	}
+	body {
+		margin-left: 15%;
+  		width: 70%;
+	}
+	h2{
+	text-align: center;
+		background-color :#FAFAFA;
+		
+		color: #1D242B;
+		font: impact;
+	}
+	h3{
+	
+		background-color : 	white;
+		
+		color: black;
+		font: impact;
+	}
+
+	h5{
+	
+		background-color : #1D242B	;
+		color:#FAFAFA;
+		font: impact;
+	
+	}
+	
+	img {
+    	width: 100%;
+  		border: 1px solid gray;
+	}
+	p {
+		text-align: justify;
+    	text-justify: inter-word;
+		background-color:lightslategrey;
+		color:white;
+	}
+	
+	.legend{
+		font-size:15px;
+	}
+	
+	rect{
+	  stroke-width:4;
+	  cursor:pointer; 
+	}
+	rect.disabled{
+		fill:transparent !important;
+	}
+	.legend td{
+		padding:4px 5px;
+		vertical-align:bottom;
+	}
+	.legendFreq, .legendPerc{
+		align:right;
+		width:50px;
+	}
+	.axis {  font: 10px sans-serif; }
+.legend tr{    border-bottom:1px solid grey; }
+.legend tr:first-child{    border-top:1px solid grey; }	
+	.axis path,
+	.axis line {
+	  fill: none;
+	  stroke: #000;
+	  shape-rendering: crispEdges;
+	}
+	
+	.tooltip {
+	  background: #eee;
+	  box-shadow: 0 0 5px #999999;
+	  color: #333;
+	  display: none;
+	  font-size: 12px;
+	  left: 130px;
+	  padding: 10px;
+	  position: absolute;
+	  text-align: center;
+	  top: 95px;
+	  width: 150px;
+	  z-index: 10;
+}
+
+	path:hover{
+	  fill:#F5B316;
+	  transform:scale(0.99);
+	}
+	
+	rect:hover {  fill:#F5B316; }
+	
+	
+</style>
+<body>
+	<header>
+			<h2 style=>Project 2 --Louisville Government Employee Salaries 
+			<br><br> YaHui Liu&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;Winter/2017 Ecs 163<br></h4>
+			
+		</header>
+		
+		<br>
+		<p>
+			<h5> <center>Overview Visualization & Detailed View</center>
+			<br>
+			<CENTER>&nbsp;&nbsp; Total Annual Rate VS. Overtime Rate VS. Incentive Allowance VS. Year</CENTER>
+            </h5>
+		</p>
+<div id='dashboard'> <label><input type="checkbox">Click to Sort (｡･∀･)ﾉﾞ </label>
+
+</div>
+
+<script src="d3.v4.min.js"></script>
+<script>
+function dashboard(id, fData){
+    var barColor = '#504D4D';
+    function segColor(c){ return {annual:"#29C6CD", overtime:"#F19584",incent:"#6A2C70"}[c]; }
+    
+    // compute total for each state.
+    fData.forEach(function(d){d.total=d.freq.annual+d.freq.overtime+d.freq.incent;});
+    
+    // function to handle histogram.
+    function histoGram(fD){
+        var hG={},    hGDim = {t: 60, r: 0, b: 30, l: 0};
+        hGDim.w = 500 - hGDim.l - hGDim.r, 
+        hGDim.h = 300 - hGDim.t - hGDim.b;
+            
+        //create svg for histogram.
+        var hGsvg = d3.select(id).append("svg")
+            .attr("width", hGDim.w + hGDim.l + hGDim.r)
+            .attr("height", hGDim.h + hGDim.t + hGDim.b).append("g")
+            .attr("transform", "translate(" + hGDim.l + "," + hGDim.t + ")");
+
+        // create function for x-axis mapping.
+        var x = d3.scaleBand()
+					  .range([0, hGDim.w])
+					  .padding(0.1)
+                .domain(fD.map(function(d) { return d[0]; }));
+
+        // Add x-axis to the histogram svg.
+        hGsvg.append("g").attr("class", "x axis")
+            .attr("transform", "translate(0," + hGDim.h + ")")
+            .call(d3.axisBottom(x));
+
+        // Create function for y-axis map.
+        var y = d3.scaleLinear().range([ hGDim.h, 0])
+                .domain([0, d3.max(fD, function(d) { return d[1]; })]);
+
+        // Create bars for histogram to contain rectangles and freq labels.
+        var bars = hGsvg.selectAll(".bar").data(fD).enter()
+                .append("g").attr("class", "bar");
+        
+        //create the rectangles.
+        bars.append("rect")
+            .attr("x", function(d) { return x(d[0]); })
+            .attr("y", function(d) { return y(d[1]); })
+            .attr("width", x.bandwidth())
+            .attr("height", function(d) { return hGDim.h - y(d[1]); })
+            .attr('fill',barColor)
+            .on("mouseover",mouseover)// mouseover is defined below.
+            .on("mouseout",mouseout)// mouseout is defined below.
+            .on('mousemove', function(d) {                            // NEW
+            tooltip.style('top', (d3.event.layerY + 10) + 'px')         // NEW
+              .style('left', (d3.event.layerX + 10) + 'px');            // NEW
+          });      
+        //Create the frequency labels above the rectangles.
+    /*    bars.append("text").text(function(d){ return d3.format(",")(d[1])})
+            .attr("x", function(d) { return x(d[0])+x.bandwidth()/2; })
+            .attr("y", function(d) { return y(d[1])-5; })
+            .attr("text-anchor", "middle");
+        */
+		
+		 var tooltip = d3.select("body")            // NEW
+             .append('div')                             // NEW
+             .attr('class', 'tooltip');                 // NEW
+
+
+              tooltip.append('div')                        // NEW
+              .attr('class', 'count');                   // NEW
+		
+		d3.select("input").on("change", change); 
+        function mouseover(d){  // utility function to be called on mouseover.
+            // filter for selected state.
+            var st = fData.filter(function(s){ return s.State == d[0];})[0],
+                nD = d3.keys(st.freq).map(function(s){ return {type:s, freq:st.freq[s]};});
+               
+            // call update functions of pie-chart and legend.    
+            pC.update(nD);
+            leg.update(nD);
+			
+			tooltip.select('.count').html(d[0]+" total:  "+d[1]);
+             tooltip.style('display', 'block'); 
+        }
+        
+        function mouseout(d){    // utility function to be called on mouseout.
+            // reset the pie-chart and legend.    
+            pC.update(tF);
+            leg.update(tF);
+			tooltip.style('display', 'none');  
+        }
+        
+        // create function to update the bars. This will be used by pie-chart.
+        hG.update = function(nD, color){
+            // update the domain of the y-axis map to reflect change in frequencies.
+            y.domain([0, d3.max(nD, function(d) { return d[1]; })]);
+            
+            // Attach the new data to the bars.
+            var bars = hGsvg.selectAll(".bar").data(nD);
+            
+            // transition the height and color of rectangles.
+			
+            bars.select("rect").transition().duration(500)
+                .attr("y", function(d) {return y(d[1]); })
+                .attr("height", function(d) { return hGDim.h - y(d[1]); })
+                .attr("fill", color);
+
+            // transition the frequency labels location and change value.
+            bars.select("text").transition().duration(500)
+                .text(function(d){ return d3.format(",")(d[1])})
+                .attr("y", function(d) {return y(d[1])-5; });            
+        }        
+      
+		 
+         d3.select("input").on("change", change); 
+		  var sortTimeout = setTimeout(function() {
+			d3.select("input").property("checked", true).each(change);
+		  }, 2000);
+
+  function change() {
+    clearTimeout(sortTimeout);
+
+    // Copy-on-write since tweens are evaluated after a delay.
+    var x0 = x.domain(fD.sort(this.checked
+        ? function(a, b) { return b[1] - a[1]; }
+        : function(a, b) { return d3.ascending(a[0], b[0]); })
+        .map(function(d) { return d[0]; }))
+        .copy();
+		
+      var bars = hGsvg.selectAll(".bar").data(fD);
+         bars.selectAll("rect")
+        .sort(function(a, b) { return x0(a[0]) - x0(b[0]); });
+
+    var transition = hGsvg.transition().duration(650),
+        delay = function(d, i) { return i * 50; };
+
+    transition.selectAll(".bar")
+	    .selectAll("rect")
+        .delay(delay)
+        .attr("x", function(d) { return x0(d[0]); });
+		
+		//transition axis
+
+  }
+		
+		
+		  return hG;
+		//sort
+    }
+    
+    // function to handle pieChart.
+    function pieChart(pD){
+         var pC ={},    pieDim ={w:250, h: 250};
+        pieDim.r = Math.min(pieDim.w, pieDim.h) / 2;
+                
+        // create svg for pie chart.
+        var piesvg = d3.select(id).append("svg")
+            .attr("width", pieDim.w).attr("height", pieDim.h).append("g")
+            .attr("transform", "translate("+pieDim.w/2+","+pieDim.h/2+")");
+        
+        // create function to draw the arcs of the pie slices.
+      //  var arc = d3.svg.arc().outerRadius(pieDim.r - 10).innerRadius(0);
+       var arc =d3.arc()
+      .outerRadius(pieDim.r - 10)
+      .innerRadius(pieDim.r - 125);
+        // create a function to compute the pie slice angles.
+      //  var pie = d3.layout.pie().sort(null).value(function(d) { return d.freq; });
+         
+		 var pie =d3.pie()
+		 .value(function(d){return d.freq;})
+		 .sort(null);
+		 
+		 
+        // Draw the pie slices.
+        piesvg.selectAll("path").data(pie(pD)).enter().append("path").attr("d", arc)
+            .each(function(d) { this._current = d; })
+            .style("fill", function(d) { return segColor(d.data.type); })
+            .on("mouseover",mouseover).on("mouseout",mouseout)
+			.on('mousemove', function(d) {                            // NEW
+            tooltip.style('top', (d3.event.layerY + 300) + 'px')         // NEW
+              .style('left', (d3.event.layerX + 1000) + 'px');            // NEW
+          });      
+	        var tooltip = d3.select("body")            // NEW
+             .append('div')                             // NEW
+             .attr('class', 'tooltip');                 // NEW
+
+
+              tooltip.append('div')                        // NEW
+              .attr('class', 'count');                   // NEW
+			  
+			  
+        // create function to update pie-chart. This will be used by histogram.
+        pC.update = function(nD){
+            piesvg.selectAll("path").data(pie(nD)).transition().duration(500)
+                .attrTween("d", arcTween);
+        }        
+        // Utility function to be called on mouseover a pie slice.
+        function mouseover(d){
+            // call the update function of histogram with new data.
+            hG.update(fData.map(function(v){ 
+                return [v.State,v.freq[d.data.type]];}),segColor(d.data.type));
+				
+				
+			tooltip.select('.count').html(d.data.type +" total: " +d.data.freq);
+             tooltip.style('display', 'block'); 
+        }
+        //Utility function to be called on mouseout a pie slice.
+        function mouseout(d){
+            // call the update function of histogram with all data.
+            hG.update(fData.map(function(v){
+                return [v.State,v.total];}), barColor);
+				tooltip.style('display', 'none');  
+        }
+        // Animating the pie-slice requiring a custom function which specifies
+        // how the intermediate paths should be drawn.
+        function arcTween(a) {
+            var i = d3.interpolate(this._current, a);
+            this._current = i(0);
+            return function(t) { return arc(i(t));    };
+        }    
+        return pC;
+		
+		
+    }
+    
+    // function to handle legend.
+    function legend(lD){
+        var leg = {};
+            
+        // create table for legend.
+        var legend = d3.select(id).append("table").attr('class','legend');
+        
+        // create one row per segment.
+        var tr = legend.append("tbody").selectAll("tr").data(lD).enter().append("tr");
+            
+        // create the first column for each segment.
+        tr.append("td").append("svg").attr("width", '16').attr("height", '16').append("rect")
+            .attr("width", '16').attr("height", '16')
+			.attr("fill",function(d){ return segColor(d.type); });
+            
+        // create the second column for each segment.
+        tr.append("td").text(function(d){ return d.type;});
+
+        // create the third column for each segment.
+        tr.append("td").attr("class",'legendFreq')
+            .text(function(d){ return d3.format(",")(d.freq);});
+
+        // create the fourth column for each segment.
+        tr.append("td").attr("class",'legendPerc')
+            .text(function(d){ return getLegend(d,lD);});
+
+        // Utility function to be used to update the legend.
+        leg.update = function(nD){
+            // update the data attached to the row elements.
+            var l = legend.select("tbody").selectAll("tr").data(nD);
+
+            // update the frequencies.
+            l.select(".legendFreq").text(function(d){ return d3.format(",")(d.freq);});
+
+            // update the percentage column.
+            l.select(".legendPerc").text(function(d){ return getLegend(d,nD);});        
+        }
+        
+        function getLegend(d,aD){ // Utility function to compute percentage.
+            return d3.format("%")(d.freq/d3.sum(aD.map(function(v){ return v.freq; })));
+        }
+
+        return leg;
+    }
+    
+    // calculate total frequency by segment for all state.
+    var tF = ['annual','overtime','incent'].map(function(d){ 
+        return {type:d, freq: d3.sum(fData.map(function(t){ return t.freq[d];}))}; 
+    });    
+    
+    // calculate total frequency by state for all segment.
+    var sF = fData.map(function(d){return [d.State,d.total];});
+
+    var hG = histoGram(sF); // create the histogram.
+    var    pC = pieChart(tF); // create the pie-chart.
+    var    leg= legend(tF);  // create the legend.
+}
+
+
+
+
+</script>
+
+
+<script>
+var freqData=[
+{State:'2008',freq:{annual:290612502.1, overtime:26155476.61, incent:12535023.21}}
+		,{State:'2009',freq:{annual:284388626.2, overtime:26723978.54, incent:13213563.74}}
+		,{State:'2010',freq:{annual:288028506.9, overtime:23424923.69, incent:12998099.97}}
+		,{State:'2011',freq:{annual:284307386.2, overtime:24292908.72, incent:13114761.37}}
+		,{State:'2012',freq:{annual:286645270.6, overtime:22297462.3, incent:12946903.81}}
+		,{State:'2013',freq:{annual:292477967, overtime:23361324.38, incent:13156419.89}}
+		,{State:'2014',freq:{annual:300078118.3, overtime:24221738.24, incent:13344149.25}}
+		,{State:'2015',freq:{annual:307729480, overtime:24520287.53, incent:13559016.51}}
+		,{State:'2016',freq:{annual:324527942.7, overtime:26946683.11, incent:14407984.25}}
+		,{State:'2017',freq:{annual:284025439.6, overtime:3579273.27, incent:1850749.43}}
+];
+
+dashboard('#dashboard',freqData);
+</script>
+<div id="chart2">
+
+	    <script src="d3.v4.min.js"></script>
+<br>
+		<script>
+		
+		var dispatch = d3.dispatch("load", "statechange");
+
+				var groups = [
+				  "2008",
+				  "2009",
+				  "2010",
+				  "2011",
+				  "2012",
+				  "2013",
+				  "2014",
+				  "2015",
+				  "2016",
+				  "2017"
+				];
+
+
+
+
+
+
+d3.csv("data1.csv", type, function(error, states) {
+  if (error) throw error;
+  var stateByD = d3.map();
+  states.forEach(function(d) { stateByD.set(d.year, d); d.enabled = true; });
+   //new
+  dispatch.call("load", this, stateByD);
+  dispatch.call("statechange", this, stateByD.get("Finance"));
+});
+
+// A drop-down menu for selecting a state; uses the "menu" namespace.
+dispatch.on("load.menu", function(stateByD) {
+ 
+ var select = d3.select("div")
+    .append("select")
+      .on("change", function() { dispatch.call("statechange", this, stateByD.get(this.value)); });
+   
+  select.selectAll("option")
+      .data(stateByD.values())
+      .enter().append("option")
+      .attr("value", function(d) { return d.year; })
+      .text(function(d) { return d.year; });
+
+  dispatch.on("statechange.menu", function(department) {
+    select.property("value", department.year);
+  });
+});
+
+
+
+// A pie chart to show population by age group; uses the "pie" namespace.
+dispatch.on("load.pie", function(stateByD) {
+
+     
+	var legendRectSize =15;
+	var legendSpacing =5;
+
+
+
+  var width2 = 880,
+      height2 = 460,
+      radius = Math.min(width2, height2) / 2;
+
+  var color = d3.scaleOrdinal()
+      .domain(groups)
+      .range(["#F7FBFC", "#D6E6F2", "#B9D7EA", "#769FCD", "#E9F679", "#9BDF46", "#25A55F","#346473","#FFA974","#FF715A"]);
+
+  var arc = d3.arc()
+      .outerRadius(radius - 10)
+      .innerRadius(radius - 70);
+ 
+  var pie = d3.pie()
+	.value(function(d){return d.count;})
+      .sort(null);
+	  
+  var tooltip = d3.select("body")            // NEW
+  .append('div')                             // NEW
+  .attr('class', 'tooltip');                 // NEW
+
+
+ tooltip.append('div')                        // NEW
+  .attr('class', 'count');                   // NEW
+	  
+  var svg = d3.select("div").append("svg")
+      .attr("width", width2)
+      .attr("height", height2)
+      .append("g")
+      .attr("transform", "translate(" + width2 / 2 + "," + height2 / 2 + ")");
+
+	
+  var path = svg.selectAll("path")
+      .data(groups)
+      .enter().append("path")
+      .attr("fill", color)
+      .each(function() { this._current = {startAngle: 0, endAngle: 0}; });
+	  
+	  
+	  
+	path.on('mouseover', function(d) {           // NEW
+  // Code                                    // NEW
+	tooltip.select('.count').html(d.data+'   \n  '+ '   290,612,502');
+     tooltip.style('display', 'block'); 
+	 var total =d3.sum(groups.map(function(d){
+	 return (d.enabled)?d.data :0;
+	 }
+	 )
+	 )
+   });                                          // NEW
+
+	path.on('mouseout', function(d) {            // NEW
+  // Code                                    // NEW
+ tooltip.style('display', 'none');  
+	});     
+
+path.on('mousemove', function(d) {                            // NEW
+            tooltip.style('top', (d3.event.layerY + 800) + 'px')         // NEW
+              .style('left', (d3.event.layerX + 500) + 'px');            // NEW
+          });                                                           // NEW
+
+
+                    
+	var legend = svg.selectAll('.legend')
+			.data(color.domain())
+			.enter()
+			.append('g')
+			.attr('class','legend')
+			.attr('transform', function(d, i) {
+    var height3 = legendRectSize + legendSpacing;
+    var offset =  height3 * color.domain().length / 2;
+    var horz = -2 * legendRectSize;
+    var vert = i * height3 - offset;
+    return 'translate(' + horz + ',' + vert + ')';
+  });
+	 
+	 legend.append('rect')
+	 .attr('width', legendRectSize)
+	.attr('height', legendRectSize)
+	.style('fill', color)
+	.style('stroke', color)
+	.on('click', function(stateByD){//new
+	 var rect = d3.select(this);
+     var enabled = true;
+     var totalEnabled = d3.sum(groups.map(function(d) {
+    return (d.enabled) ? 1 : 0;
+  }));
+
+  if (rect.attr('class') === 'disabled') {
+    rect.attr('class', '');
+  } else {
+    if (totalEnabled < 2) return;
+    rect.attr('class', 'disabled');
+    enabled = false;
+  }
+
+  pie.value(function(d) {
+    if (d.data === data) d.enabled = enabled;
+    return (d.enabled) ? d.data : 0;
+  });
+
+  path = path.data(pie(groups));
+
+  path.transition()
+    .duration(750)
+    .attrTween('d', function(d) {
+      var interpolate = d3.interpolate(this._current, d);
+      this._current = interpolate(0);
+      return function(t) {
+        return arc(interpolate(t));
+      };
+    });
+	
+	
+	});
+  
+  legend.append('text')
+  .attr('x', legendRectSize + legendSpacing+10)
+  .attr('y', legendRectSize - legendSpacing +5)
+  .text(function(d) { return d; });
+  
+    dispatch.on("statechange.pie", function(d) {
+    path.data(pie.value(function(g) { return d[g]; })(groups)).transition()
+        .attrTween("d", function(d) {
+          var interpolate = d3.interpolate(this._current, d);
+          this._current = interpolate(0);
+          return function(t) {
+            return arc(interpolate(t));
+          };
+        });
+  });
+  
+});
+
+// Coerce population counts to numbers and compute total per state.
+function type(d) {
+  d.total = d3.sum(groups, function(k) { return d[k] = +d[k]; });
+  return d;
+}
+</script>
+
+<p>
+			<h5> 
+			<center>Total Employee Salaries VS. Louisville Government Department </center>
+            </h5>
+</p>
+<p>
+			<h5> &nbsp;&nbsp;&nbsp;&nbsp;The first and second visualization views include a set of a connected bar chart, a pie chart, and a legend table. The bar chart which is at the left of the page shows the number of total annual rate, the overtime rate or the incentive allowance during 2008 to 2017 by the length of each bar. And the pie chart which is to the right of the page will compare the rates of these three different type of salaries by using the size of each piece. And the legend will show the specific data changed with users’ selections. 
+&nbsp;&nbsp; &nbsp;&nbsp;The way to use this set of a connected dashboard is to move the mouse over different bars of years or different pieces of the type of salaries. Then the size and color of bars or pieces of pie will change with the specific setting based on the data and legend colors. An additional operation is a checkbox on the left side which will sort the bar chart by clicking.
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The third visualization is a donuts chart with a select menu of different government departments. By using the selection menu on the top-left to select a different department, the donuts chart will show the total of employee salaries during 2008 to 2009 of this department. All of the legends contains different years are in the middle of the chart will remain user to notice the different colors. Every color which is in the same color hue (e.g. different color numbers of blue, green and red) will contain the continuous four years which will let users notice much easily
+
+		
+            </h5>
+		</p>
+
+</div>
+
+
+<div id="chartContainer">
+
+<p>
+			<h5>
+			<center>Annual Rate VS. Regular Rate</center>
+            </h5>
+		</p>
+
+<script src="d3.v4.min.js"></script>
+<script src="dimple.v2.3.0.js"></script>
+ <script type="text/javascript">
+ 
+ 
+  var svg = dimple.newSvg("#chartContainer", 800, 500);
+
+    // The default data set for these examples has regular times
+    // and the point of this demo is to show the time axis
+    // functionality, therefore a small bespoke data set is used.
+    data = [
+      { "Type":"AnnualRate","Year":"2008","Average":36978,"Total":290612502},
+	  { "Type":"AnnualRate","Year":"2009","Average":38916,"Total":284388626},
+	  { "Type":"AnnualRate","Year":"2010","Average":37276,"Total":288028507},
+	  { "Type":"AnnualRate","Year":"2011","Average":40117,"Total":284307386},
+	  { "Type":"AnnualRate","Year":"2012","Average":40659,"Total":286645270},
+	  { "Type":"AnnualRate","Year":"2013","Average":41510,"Total":292477967},
+	  { "Type":"AnnualRate","Year":"2014","Average":42426,"Total":300078118},
+	  { "Type":"AnnualRate","Year":"2015","Average":43458,"Total":307729480},
+	  { "Type":"AnnualRate","Year":"2016","Average":44232,"Total":324527942},
+	  { "Type":"AnnualRate","Year":"2017","Average":46853,"Total":284025439},
+	  { "Type":"RegularRate","Year":"2008","Average":30944,"Total":243186829},
+	  { "Type":"RegularRate","Year":"2009","Average":33575,"Total":247248553},
+	  { "Type":"RegularRate","Year":"2010","Average":31363,"Total":242339090},
+	  { "Type":"RegularRate","Year":"2011","Average":34144,"Total":241979396},
+	  { "Type":"RegularRate","Year":"2012","Average":34588,"Total":243843574},
+	  { "Type":"RegularRate","Year":"2013","Average":35381,"Total":249294409},
+	  { "Type":"RegularRate","Year":"2014","Average":35924,"Total":254092712},
+	  { "Type":"RegularRate","Year":"2015","Average":36732,"Total":260036262},
+	  { "Type":"RegularRate","Year":"2016","Average":36427,"Total":267264414},
+	  { "Type":"RegularRate","Year":"2017","Average":5077,"Total":30778318}
+      
+    ];
+
+    // Create Separate Date and Time, this allows us to draw them
+    // on separate axes.  Despite the time axis only displaying
+    // the time portion, the whole date is used so they need to
+    // have the same date allocated
+ /*   data.forEach(function (d) {
+        d["Day"] = d["Date"].substring(0, d["Date"].length - 6);
+        d["Time of Day"] =
+            "2000-01-01 " + d["Date"].substring(d["Date"].length - 5);
+    }, this);*/
+      
+	  data.forEach(function(d){
+	  d["Year"] =d["Year"];
+	  d["Average"] =d["Average"];
+	  d["Total"] =d["Total"];
+	  })
+	  
+    // Create the chart as usual
+    var myChart = new dimple.chart(svg, data);
+    myChart.setBounds(200, 80, 590, 320)
+
+    // Add the x axis reading dates in the format 01 Jan 2012
+    // and displaying them 01 Jan
+    //var x = myChart.addTimeAxis("x", "Day", "%d %b %Y", "%d %b");
+	  var x =myChart.addAxis("x","Year");
+
+    // Add the y axis reading dates and times but only outputting
+    // times.
+   /* var y = myChart.addTimeAxis("y", "Time of Day",
+        "%Y-%m-%d %H:%M", "%H:%M");*/
+		
+  var y=myChart.addMeasureAxis("y","Average");
+
+    // Size the bubbles by volume
+    var z = myChart.addMeasureAxis("z", "Total");
+
+    // Setting min and max dates requires them to be set
+    // as actual javascript date objects
+    x.overrideMin = 2008;
+    x.overrideMax = 2017;
+    y.overrideMin = 0;
+    y.overrideMax = 46853;
+
+    // Show a label for every 4 weeks.
+  //  x.timePeriod = d3.timeWeek;
+  //  x.timeInterval = 4;
+
+    // Control bubble sizes by setting the max and min values
+    z.overrideMin = 30778318;
+    z.overrideMax = 324527942;
+
+    // Add the bubble series for Type values first so that it is
+    // drawn behind the lines
+    myChart.addSeries("Type", dimple.plot.bubble);
+
+    // Add the line series on top of the bubbles.  The bubbles
+    // and line points will naturally fall in the same places
+    var s = myChart.addSeries("Type", dimple.plot.line);
+
+    // Add line markers to the line because it looks nice
+    s.lineMarkers = true;
+
+    // Show a legend
+    myChart.addLegend(180, 10, 360, 20, "right");
+
+    // Draw everything
+    myChart.draw();
+ 
+ 
+ 
+ 
+ 
+ </script>
+<p>
+			<h5> &nbsp;&nbsp;&nbsp;&nbsp;The last extra visualization is a line chart with plot bubbles as line point weightings. This chart will mainly compare the annual rate and regular rate during 2008 to 2017. The lines’ positions will show the average annual rate or regular rate in each year and the size of each plot bubbles will contain the total annual rate or regular rate in each year. For the color, the blue line shows the annual rate and the red line shows the regular rate. And when the users move their mouse to each plot, will highlight the data point and get the specific information of the plot bubble. 
+            </h5>
+</p>
+
+</div>
